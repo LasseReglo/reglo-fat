@@ -3,7 +3,7 @@
    Kontrollpunkter: FAT_WM_Norsk + endringer avtalt i ChatGPT-overlevering (belastningsprøver) + ID20-punkter (FORELØPIG). */
 'use strict';
 const CFG = window.WM_CONFIG || {};
-const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.1 (23.11.2026) – IKKE GODKJENT SKJEMA';
+const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.2 (23.11.2026) – IKKE GODKJENT SKJEMA';
 
 /* Elementtyper:
    photo:true        bilde påkrevd (minst ett) når punktet merkes JA
@@ -40,7 +40,9 @@ const SECTIONS = [
     ['2.9','Kurven synker ikke'],
     ['2.10','Hurtigavlufter fungerer'],
     ['2.11','Kjedeslakkventil fungerer'],
-    ['2.12','Horn (fløyte) fungerer']]},
+    ['2.12','Horn (fløyte) fungerer'],
+    ['2.13','Kurvdørene lukker og låser seg selv, kan ikke åpnes utilsiktet og åpner ikke utover',{noBulk:true}],
+    ['2.14','Alle bevegelser (opp/ned, ut/inn, sideveis) stopper når betjeningsspaken slippes',{noBulk:true}]]},
   {nr:'3',title:'Belastningsprøver – eksisterende verkstedpraksis',note:'Lastene i teksten er dagens praksis for 150 kg nyttelast. Ikke vurdert som komplett statisk/dynamisk prøving etter maskinforordningen.',items:[
     ['3.1','Belastet løfteprøve med 225 kg er gjennomført (opp og ned gjennom løfteområdet) før innstilling av overlastsikringen',{photo:true,load:{skjema:225}}],
     ['3.2','Overlastsikringen er innstilt og funksjonskontrollert med 200 kg prøvelast, med forventet utløsning/funksjon bekreftet',{load:{skjema:200}}],
@@ -60,7 +62,10 @@ const SECTIONS = [
     ['6.1','Hengelås er montert og nøkler er stripset fast'],
     ['6.2','Aluminiumsdeksel er ferdig, pakket og lagt klar'],
     ['6.3','Gummistoppere, kjede og diverse er sendt med'],
-    ['6.4','Bilde av ferdig emballert produkt er tatt',{photo:true,autoJa:true}]]}
+    ['6.4','Typeskilt er montert med produsent og kontaktadresse, modell, serienummer lik denne kontrollen, byggeår og CE-merke',{photo:true}],
+    ['6.5','Skilt i kurven viser maks antall personer og maks last, og stemmer med nominell nyttelast på ordren',{photo:true}],
+    ['6.6','Bruksanvisning og EU-samsvarserklæring følger med, eller lenke/QR-kode til dem er merket på maskinen'],
+    ['6.7','Bilde av ferdig emballert produkt er tatt',{photo:true,autoJa:true}]]}
 ].map(s=>({...s,items:s.items.map(([nr,text,o])=>Object.assign({nr,text,prelim:!!s.prelim},o||{}))}));
 const ALL=SECTIONS.flatMap(s=>s.items.map(it=>Object.assign({sec:s},it)));
 const ITEM=nr=>ALL.find(i=>i.nr===nr);
@@ -247,8 +252,8 @@ form.addEventListener('click',e=>{
     iv(nr).photos=(iv(nr).photos||[]).filter(p=>p.id!==pid);th.remove();IDB.del(pid).catch(()=>{});const pb=$(`.item[data-nr="${nr}"] .pbtn`);const n=iv(nr).photos.length;pb.classList.toggle('has',!!n);pb.querySelector('.pc').textContent=n||'';touched();return}
   const ao=e.target.closest('.allok');
   if(ao){const sec=SECTIONS.find(s=>s.nr===ao.closest('.sec').dataset.sec);let n=0;
-    sec.items.forEach(it=>{if(it.photo)return;const v=iv(it.nr);if(!v.s){v.s='ja';updateItem(it.nr);n++}});
-    updateProgress();touched();toast(n?`${n} punkter merket JA${sec.items.some(i=>i.photo)?' (bildepunkter må tas manuelt)':''}`:'Alle punkter er allerede utfylt');return}
+    sec.items.forEach(it=>{if(it.photo||it.noBulk)return;const v=iv(it.nr);if(!v.s){v.s='ja';updateItem(it.nr);n++}});
+    updateProgress();touched();toast(n?`${n} punkter merket JA${sec.items.some(i=>i.photo||i.noBulk)?' (bilde- og funksjonstestpunkter må tas manuelt)':''}`:'Alle punkter er allerede utfylt');return}
   const na=e.target.closest('.na-toggle');
   if(na){const s=na.closest('.sec'),nr=s.dataset.sec;state.na[nr]=!state.na[nr];s.classList.toggle('is-na',state.na[nr]);na.setAttribute('aria-pressed',String(state.na[nr]));updateProgress();touched();return}
   const clr=e.target.closest('[data-clr]');if(clr){state[clr.dataset.clr].img='';sigRedraw[clr.dataset.clr]();touched();return}
