@@ -1,6 +1,6 @@
 // Service worker: gjør at appen åpner og kan fylles ut uten nett.
 // Øk VERSION når appen endres, så telefonene henter den nye versjonen.
-const VERSION = 'wm-fat-v3';
+const VERSION = 'wm-fat-v4';
 const SHELL = ['./', 'index.html', 'app.js', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'img/kontrollmal-223.png'];
 const LIBS = [
   'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js',
@@ -26,9 +26,9 @@ self.addEventListener('fetch', e => {
     e.respondWith(caches.match(req).then(r => r || fetch(req)));
     return;
   }
-  // Egne filer: prøv nett først (ny versjon), ellers lagret kopi
+  // Egne filer: prøv nett først (ny versjon, forbi nettleserens mellomlager), ellers lagret kopi
   e.respondWith(
-    fetch(req).then(res => {
+    fetch(req, { cache: 'no-cache' }).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('index.html')))

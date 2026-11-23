@@ -3,7 +3,7 @@
    Kontrollpunkter: FAT_WM_Norsk + endringer avtalt i ChatGPT-overlevering (belastningsprøver) + ID20-punkter (FORELØPIG). */
 'use strict';
 const CFG = window.WM_CONFIG || {};
-const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.3 (23.11.2026) – IKKE GODKJENT SKJEMA';
+const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.3.1 (23.11.2026) – IKKE GODKJENT SKJEMA';
 
 /* Elementtyper:
    photo:true        bilde påkrevd (minst ett) når punktet merkes JA
@@ -504,5 +504,8 @@ window.addEventListener('pagehide',saveNow);
   if(ios&&!standalone&&!ls.get('wm-fat-tip-closed',false))$('#installTip').hidden=false;
   $('#tipClose').onclick=()=>{$('#installTip').hidden=true;ls.set('wm-fat-tip-closed',true)};
 })();
-if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+  const hadCtrl=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtrl||reloaded)return;reloaded=true;saveNow();location.reload()});
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update().catch(()=>{})}).catch(()=>{})}
 renderForm();updateCount();netState();initAuth();
