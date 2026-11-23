@@ -47,7 +47,10 @@ Object.values(records).forEach(r=>{if(!r.formId)r.formId='wallman'});
 const curRec=records[ls.get(CUR_KEY,'')];
 let picking=!curRec;
 let state=curRec?Object.assign(blank(curRec.formId),clone(curRec)):blank();
-const hasContent=s=>!!(s.meta.prodordre||s.meta.serienr||s.meta.kunde||s.meta.salgsordre||Object.keys(s.items).length||s.sig1.img);
+const hasContent=s=>{const b=blank(s.formId).meta;
+  return Object.keys(s.meta).some(k=>k!=='dato'&&String(s.meta[k]||'')!==String(b[k]||''))
+    ||Object.values(s.items).some(v=>v&&(v.s||v.c||v.v||v.r||v.last||(v.photos||[]).length))
+    ||Object.values(s.na).some(Boolean)||!!s.merknad||!!(s.sig1&&s.sig1.img)||!!(s.sig2&&s.sig2.img)||!!s.final};
 function persistRecords(){if(!ls.set(REC_KEY,records))toast('Lagringsplassen er full. Slett gamle kontroller under «Lagrede».')}
 let saveT;
 function saveState(){clearTimeout(saveT);saveT=setTimeout(saveNow,350)}
@@ -201,7 +204,7 @@ form.addEventListener('change',async e=>{const t=e.target;if(!t.dataset.photo||s
   loadThumbs();updateItem(nr);updateProgress();saveNow();toast(it.autoJa?'Bilde lagret – punktet er merket JA':'Bilde lagret. Merk resultatet selv – bilde alene er ikke bestått prøve')});
 form.addEventListener('click',e=>{
   const pc=e.target.closest('[data-form]');
-  if(pc){state=blank(pc.dataset.form);picking=false;ls.set(CUR_KEY,'');spErr='';renderForm();$('#progRow').hidden=false;window.scrollTo(0,0);return}
+  if(pc){state=blank(pc.dataset.form);picking=false;ls.set(CUR_KEY,'');spErr='';renderForm();$('#progRow').hidden=false;window.scrollTo(0,0);pushFormState();return}
   const act=e.target.closest('[data-act]');
   if(act){const a=act.dataset.act;if(a==='pdf')sharePdf();else if(a==='sp')uploadCurrent();else if(a==='check')showProblems();else if(a==='finish')finish();else if(a==='rev')newRevision();return}
   if(state.final)return;
@@ -253,7 +256,16 @@ function showTab(which){const f=which==='form';
   $('#tab-form').setAttribute('aria-selected',String(f));$('#tab-list').setAttribute('aria-selected',String(!f));
   $('#form').hidden=!f;$('#list').hidden=f;$('#progRow').hidden=!f||picking;if(!f)renderList();window.scrollTo(0,0)}
 $('#tab-form').onclick=()=>showTab('form');$('#tab-list').onclick=()=>{saveNow();showTab('list')};
-function openRecord(s){saveNow();picking=false;state=Object.assign(blank(s.formId),clone(s));ls.set(CUR_KEY,state.id);spErr='';renderForm();showTab('form')}
+function openRecord(s){saveNow();picking=false;state=Object.assign(blank(s.formId),clone(s));ls.set(CUR_KEY,state.id);spErr='';renderForm();showTab('form');pushFormState()}
+/* ---------- tilbake til skjemavalg: sveip fra venstre kant eller tilbake-knapp ---------- */
+function pushFormState(){try{if(!(history.state&&history.state.v==='form'))history.pushState({v:'form'},'')}catch(e){}}
+function backToPicker(){if(picking)return;const had=hasContent(state);if(had)saveNow();picking=true;ls.set(CUR_KEY,'');spErr='';showTab('form');renderForm();
+  if(had)toast(state.final?'Tilbake til skjemavalg':'Utkastet er lagret under «Lagrede»')}
+window.addEventListener('popstate',()=>{if(!picking)backToPicker()});
+(function edgeSwipe(){let sx=null,sy=0,st=0;
+  document.addEventListener('touchstart',e=>{const t=e.touches[0];sx=(e.touches.length===1&&t.clientX<28&&!picking&&!$('#form').hidden&&!e.target.closest('canvas'))?t.clientX:null;sy=t.clientY;st=Date.now()},{passive:true});
+  document.addEventListener('touchend',e=>{if(sx==null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=Math.abs(t.clientY-sy);sx=null;
+    if(dx>70&&dy<60&&Date.now()-st<800){if(history.state&&history.state.v==='form')history.back();else backToPicker()}},{passive:true})})();
 $('#btnNew').onclick=()=>{saveNow();picking=true;ls.set(CUR_KEY,'');spErr='';showTab('form');renderForm()};
 function updateCount(){const n=Object.keys(records).length;$('#savedCount').textContent=n?`(${n})`:''}
 function recStatus(r){return !r.final?['wip','Ikke ferdig']:r.frigitt==='JA'?['ok','Frigitt']:['no','Ikke frigitt']}
@@ -472,4 +484,4 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){
   const hadCtrl=!!navigator.serviceWorker.controller;let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtrl||reloaded)return;reloaded=true;saveNow();location.reload()});
   navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update().catch(()=>{})}).catch(()=>{})}
-renderForm();updateCount();netState();initAuth();
+renderForm();updateCount();netState();initAuth();if(!picking)pushFormState();
