@@ -1,6 +1,6 @@
 // Service worker: gjør at appen åpner og kan fylles ut uten nett.
 // Øk VERSION når appen endres, så telefonene henter den nye versjonen.
-const VERSION = 'wm-fat-v7';
+const VERSION = 'wm-fat-v8';
 const SHELL = ['./', 'index.html', 'forms.js', 'app.js', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'img/kontrollmal-223.png'];
 const LIBS = [
   'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js',

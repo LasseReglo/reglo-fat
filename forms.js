@@ -132,7 +132,7 @@ const FORMS=[
     ['5.5','Merkelapp «Band her» er satt på (4 stk)']]}
  ]},
 
-{id:'liftman',kat:'Lifter',navn:'LIFTMAN D125-2',tittel:'SLUTTKONTROLL (FAT) LIFTMAN D125-2',kort:'LIFTMAN',kilde:'FAT Lift-Man',
+{id:'liftman',kat:'Lifter',navn:'LIFTMAN',tittel:'SLUTTKONTROLL (FAT) LIFTMAN',kort:'LIFTMAN',kilde:'FAT Lift-Man',
  head:HEAD_LIFT.concat([{k:'variant',l:'Variant',seg:['STD (AM000023)','Twin Wheels (AM002997)'],req:1}]),defLast:null,baseLast:null,sigs:SIG2,sections:[
   {nr:'1',title:'Montering og merking',items:[
     ['1.1','Stripete tape er montert foran, bak og på tårn'],

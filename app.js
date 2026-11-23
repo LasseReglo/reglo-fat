@@ -137,7 +137,7 @@ function headHTML(){const F=FORM();return F.head.map(h=>{const p='meta.'+h.k,req
   if(h.unit)return `<label class="f"><span>${esc(h.l)}${req}</span><span class="unit"><input data-path="${p}" type="text" inputmode="decimal" value="${esc(state.meta[h.k])}"><em>${esc(h.unit)}</em></span></label>`;
   return field(esc(h.l),p,h.type||'text',{req:h.req,wide:h.wide,attrs:h.num?'inputmode="numeric"':''})}).join('')}
 function pickerHTML(){const kats=[...new Set(FORMS.map(f=>f.kat))];
-  return `<div class="picker"><p class="note" style="margin:0 0 6px">Velg skjema for ny kontroll</p>${kats.map(k=>`<h2 class="pk">${esc(k)}</h2><div class="pgrid">${FORMS.filter(f=>f.kat===k).map(f=>`<button type="button" class="pcard" data-form="${f.id}"><b>${esc(f.navn)}</b><span>${esc(f.kilde)}</span></button>`).join('')}</div>`).join('')}</div>`}
+  return `<div class="picker"><p class="note" style="margin:0 0 6px">Velg skjema for ny kontroll</p>${kats.map(k=>`<h2 class="pk">${esc(k)}</h2><div class="pgrid">${FORMS.filter(f=>f.kat===k).map(f=>`<button type="button" class="pcard" data-form="${f.id}"><b>${esc(f.navn)}</b></button>`).join('')}</div>`).join('')}</div>`}
 function renderForm(){
   if(picking){$('h1').textContent='NY KONTROLL';$('#progRow').hidden=true;$('#form').classList.remove('locked');$('#form').innerHTML=pickerHTML();return}
   const F=FORM();$('h1').textContent=F.tittel;if($('#form').hidden===false)$('#progRow').hidden=false;
