@@ -1,7 +1,7 @@
 {
-  "name": "Sluttkontroll WALL-MAN",
+  "name": "Sluttkontroll Reglo",
   "short_name": "Sluttkontroll",
-  "description": "Digital sluttkontroll (FAT) for WALL-MAN fra Reglo AS",
+  "description": "Digital sluttkontroll (FAT) for Reglo-produkter fra Reglo AS",
   "lang": "nb",
   "start_url": "./",
   "scope": "./",

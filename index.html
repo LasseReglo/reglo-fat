@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Sluttkontroll WALL-MAN</title>
+<title>Sluttkontroll – Reglo</title>
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -172,6 +172,17 @@ html,body{overflow-x:hidden}
 .concl .row>span{flex:1 1 14rem}
 @media (max-width:640px){.sigcol .grid{grid-template-columns:1fr 1fr}.sigcol .grid>label:last-child input{padding-inline:8px}}
 @media (max-width:380px){.sigcol .grid{grid-template-columns:1fr}}
+
+.picker h2.pk{font-size:16px;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--ink)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.pcard{text-align:left;border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:12px 14px;min-height:64px;display:flex;flex-direction:column;gap:3px}
+.pcard b{font-size:15.5px}.pcard span{font-size:12px;color:var(--muted)}
+.pcard:active{border-color:var(--green)}
+.formsrc{font-size:13px;color:var(--muted);margin:10px 0 0}
+.tag.mf{background:#e7f0fb;color:#1d4f91}
+.mini.wide{flex:1 1 100%}.mini.wide input{width:100%}
+.sigs.one{grid-template-columns:1fr}
+@media (min-width:641px){.sigs.one .sigcol{max-width:50%}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -182,7 +193,7 @@ html,body{overflow-x:hidden}
     <div class="who" id="who"></div>
   </div>
   <h1>SLUTTKONTROLL (FAT) WALL-MAN</h1>
-  <div class="banner proto"><span><b>Prototyp v0.4.</b> Kontrollpunktene bygger på dagens FAT-skjema. Punkter merket FORELØPIG er ikke godkjent prøvemetode.</span></div>
+  <div class="banner proto"><span><b>Prototyp v0.5.</b> Skjemaene bygger på malene i Kvalitetsportalen. MF = lagt til for maskinforordningen. FORELØPIG = ikke godkjent prøvemetode.</span></div>
   <div class="banner" id="installTip" hidden><span>Legg appen på hjemskjermen: trykk <b>Del</b> og velg <b>Legg til på Hjem-skjerm</b>.</span><button class="chip" id="tipClose" type="button">OK</button></div>
   <div class="banner" id="offlineTip" hidden><span>Du er uten nett. Utfyllingen lagres på enheten og lastes opp når nettet er tilbake.</span></div>
 
@@ -213,6 +224,7 @@ html,body{overflow-x:hidden}
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="forms.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
