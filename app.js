@@ -3,7 +3,7 @@
    Kontrollpunkter: FAT_WM_Norsk + endringer avtalt i ChatGPT-overlevering (belastningsprøver) + ID20-punkter (FORELØPIG). */
 'use strict';
 const CFG = window.WM_CONFIG || {};
-const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.2 (23.11.2026) – IKKE GODKJENT SKJEMA';
+const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.3 (23.11.2026) – IKKE GODKJENT SKJEMA';
 
 /* Elementtyper:
    photo:true        bilde påkrevd (minst ett) når punktet merkes JA
@@ -165,7 +165,7 @@ function itemHTML(it){
     <textarea class="cmt" data-comment="${it.nr}" rows="2" placeholder="${v.s==='nei'?'Beskriv avviket (påkrevd)':'Kommentar til '+it.nr}" ${showC?'':'hidden'}>${esc(v.c)}</textarea></div>`}
 function sectionHTML(sec){const na=!!state.na[sec.nr];
   return `<section class="sec${na?' is-na':''}${sec.prelim?' prelim':''}" data-sec="${sec.nr}"><header class="sec-h"><span class="sec-nr">${sec.nr}</span><h2>${sec.title}${sec.prelim?' <span class="tag pre">FORELØPIG</span>':''}</h2>
-    <span class="sec-count" data-count="${sec.nr}"></span><div class="sec-tools">${sec.optional?`<button type="button" class="chip na-toggle" aria-pressed="${na}">Ikke utført</button>`:''}${sec.bulk?'<button type="button" class="chip allok">Resten JA</button>':''}</div></header>
+    <span class="sec-count" data-count="${sec.nr}"></span><div class="sec-tools">${sec.optional?`<button type="button" class="chip na-toggle" aria-pressed="${na}">Ikke utført</button>`:''}</div></header>
     ${sec.note?`<p class="secnote">${esc(sec.note)}</p>`:''}
     <div class="sec-body">${sec.img?`<details class="ref"><summary>Vis illustrasjon for kontrollmål</summary><img src="${sec.img}" alt="Illustrasjon kontrollmål 223 mm"></details>`:''}${sec.items.map(itemHTML).join('')}</div></section>`}
 function sigHTML(n,title){const k='sig'+n;

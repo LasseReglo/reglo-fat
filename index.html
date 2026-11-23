@@ -106,7 +106,7 @@ h1{text-align:center;font-size:clamp(22px,5vw,30px);font-weight:800;margin:10px 
 .avvlist{background:var(--warn-bg);border-radius:8px;padding:10px 12px;font-size:14px}
 .avvlist b{color:var(--warn)}
 .sigbox{border:1px dashed #9a9a9a;border-radius:10px;position:relative;background:var(--bg)}
-#sig{display:block;width:100%;height:170px;touch-action:none}
+.sigbox canvas{display:block;width:100%;height:170px;touch-action:none}
 .sigbox .sigl{position:absolute;left:12px;bottom:8px;font-size:12px;color:var(--muted);pointer-events:none}
 .sigbox .sigclr{position:absolute;right:8px;top:8px}
 .sigline{position:absolute;left:12px;right:12px;bottom:28px;border-bottom:1px solid var(--line);pointer-events:none}
@@ -163,6 +163,15 @@ details.ref img{max-width:240px;width:100%;border:1px solid var(--line);border-r
 .problist ul{margin:6px 0 0;padding-left:18px}.problist .okt{color:var(--green-ink)}
 form.locked .st[aria-pressed="false"],form.locked .cbtn,form.locked .allok,form.locked .sigclr,form.locked .thdel,form.locked .pbtn{opacity:.35}
 @media (max-width:640px){.sigs{grid-template-columns:1fr}.xtra,.thumbs{grid-column:1/-1}}
+
+/* iPhone: hindre at dato-felt og signaturfelt blir bredere enn skjermen */
+html,body{overflow-x:hidden}
+.grid>*,.sigs>*,.sigcol,.concl>*{min-width:0}
+.f input[type="date"]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;text-align:left;line-height:24px}
+.f input[type="date"]::-webkit-date-and-time-value{text-align:left}
+.concl .row>span{flex:1 1 14rem}
+@media (max-width:640px){.sigcol .grid{grid-template-columns:1fr 1fr}.sigcol .grid>label:last-child input{padding-inline:8px}}
+@media (max-width:380px){.sigcol .grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -173,7 +182,7 @@ form.locked .st[aria-pressed="false"],form.locked .cbtn,form.locked .allok,form.
     <div class="who" id="who"></div>
   </div>
   <h1>SLUTTKONTROLL (FAT) WALL-MAN</h1>
-  <div class="banner proto"><span><b>Prototyp v0.2.</b> Kontrollpunktene bygger på dagens FAT-skjema. Punkter merket FORELØPIG er ikke godkjent prøvemetode.</span></div>
+  <div class="banner proto"><span><b>Prototyp v0.3.</b> Kontrollpunktene bygger på dagens FAT-skjema. Punkter merket FORELØPIG er ikke godkjent prøvemetode.</span></div>
   <div class="banner" id="installTip" hidden><span>Legg appen på hjemskjermen: trykk <b>Del</b> og velg <b>Legg til på Hjem-skjerm</b>.</span><button class="chip" id="tipClose" type="button">OK</button></div>
   <div class="banner" id="offlineTip" hidden><span>Du er uten nett. Utfyllingen lagres på enheten og lastes opp når nettet er tilbake.</span></div>
 
