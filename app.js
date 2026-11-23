@@ -3,7 +3,7 @@
    Kontrollpunkter: FAT_WM_Norsk + endringer avtalt i ChatGPT-overlevering (belastningsprøver) + ID20-punkter (FORELØPIG). */
 'use strict';
 const CFG = window.WM_CONFIG || {};
-const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.3.2 (23.11.2026) – IKKE GODKJENT SKJEMA';
+const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.4 (23.11.2026) – IKKE GODKJENT SKJEMA';
 
 /* Elementtyper:
    photo:true        bilde påkrevd (minst ett) når punktet merkes JA
@@ -67,6 +67,9 @@ const SECTIONS = [
     ['6.6','Bruksanvisning og EU-samsvarserklæring følger med, eller lenke/QR-kode til dem er merket på maskinen'],
     ['6.7','Bilde av ferdig emballert produkt er tatt',{photo:true,autoJa:true}]]}
 ].map(s=>({...s,items:s.items.map(([nr,text,o])=>Object.assign({nr,text,prelim:!!s.prelim},o||{}))}));
+const MODELLER=[{navn:'WALL-MAN',last:150},{navn:'WALL-MAN XL',last:250},{navn:'WALL-MAN X',last:200,merknad:'Merk: TÜV-sertifikat 44 205 15124606 for WALL-MAN X utløper 17.03.2027 og fornyes ikke. Avklar med Teknisk at maskinen kan leveres.'}];
+const modell=s=>MODELLER.find(m=>m.navn===(s||state).meta.modell);
+const lastAvviker=s=>{const m=modell(s),n=num((s||state).meta.nyttelast);return !!(m&&n!=null&&n!==m.last)};
 const ALL=SECTIONS.flatMap(s=>s.items.map(it=>Object.assign({sec:s},it)));
 const ITEM=nr=>ALL.find(i=>i.nr===nr);
 
@@ -98,7 +101,7 @@ function shrink(file,max=1600){return new Promise((res,rej)=>{const url=URL.crea
 /* ---------- records (lagret på enheten) ---------- */
 const REC_KEY='wm-fat-records-v1',CUR_KEY='wm-fat-current-v1';
 function blank(){return{id:newId(),createdAt:new Date().toISOString(),rev:1,
-  meta:{dato:today(),prodordre:'',salgsordre:'',kunde:'',serienr:'',nyttelast:'',vekt:'',ekstrautstyr:''},
+  meta:{dato:today(),prodordre:'',salgsordre:'',kunde:'',serienr:'',modell:'',nyttelast:'',lastBegrunnelse:'',vekt:'',ekstrautstyr:''},
   na:{},items:{},merknad:'',frigitt:'',
   sig1:{navn:'',dato:today(),img:''},sig2:{navn:'',dato:'',img:''}}}
 let records=ls.get(REC_KEY,{});
@@ -124,7 +127,8 @@ const loadWarn=(it,s)=>!!(it.load&&it.load.skjema&&nominell(s)&&nominell(s)!==15
 function stats(s){let tot=0,done=0;const nei=[];
   SECTIONS.forEach(sec=>{if(s.na[sec.nr])return;sec.items.forEach(it=>{tot++;const v=s.items[it.nr];if(v&&v.s){done++;if(v.s==='nei')nei.push(it)}})});return{tot,done,nei}}
 function problems(s){const p=[];const m=s.meta;
-  if(!m.prodordre)p.push('Produksjonsordre mangler');if(!m.serienr)p.push('Serienummer mangler');if(!nominell(s))p.push('Nominell nyttelast mangler');
+  if(!m.prodordre)p.push('Produksjonsordre mangler');if(!m.serienr)p.push('Serienummer mangler');if(!m.modell)p.push('Modell er ikke valgt');if(!nominell(s))p.push('Nominell nyttelast mangler');
+  if(lastAvviker(s)&&!String(m.lastBegrunnelse||'').trim())p.push(`Nyttelast ${m.nyttelast} kg avviker fra standard for ${m.modell} – begrunnelse mangler`);
   SECTIONS.forEach(sec=>{if(s.na[sec.nr])return;sec.items.forEach(it=>{const v=s.items[it.nr]||{};
     if(!v.s){p.push(`${it.nr}: ikke besvart`);return}
     if(v.s==='nei'&&!String(v.c||'').trim())p.push(`${it.nr}: NEI krever avviksbeskrivelse`);
@@ -180,7 +184,9 @@ function renderForm(){
     ${field('Dato','meta.dato','date')}${field('Produksjonsordre (PO)','meta.prodordre','text',{req:1})}
     ${field('Salgsordre (SO)','meta.salgsordre')}${field('Kunde','meta.kunde')}
     ${field('Serienummer','meta.serienr','text',{req:1})}
-    <div class="f"><span class="lbl-s">Nominell nyttelast <b class="req">*</b></span>${seg('meta.nyttelast',['150','200','225'])}</div>
+    <div class="f wide"><span class="lbl-s">Modell <b class="req">*</b></span>${seg('meta.modell',MODELLER.map(m=>m.navn))}<span class="hint" id="modellHint" ${modell()&&modell().merknad?'':'hidden'}>${esc(modell()&&modell().merknad||'')}</span></div>
+    <label class="f"><span>Nominell nyttelast <b class="req">*</b></span><span class="unit"><input data-path="meta.nyttelast" type="text" inputmode="decimal" value="${esc(state.meta.nyttelast)}"><em>kg</em></span><span class="xhint" id="lastHint">${modell()?`Standard for ${esc(modell().navn)}: ${modell().last} kg`:'Fylles ut når modell velges'}</span></label>
+    <label class="f" id="lastBegr" ${lastAvviker()?'':'hidden'}><span>Begrunnelse for avvikende nyttelast <b class="req">*</b></span><input data-path="meta.lastBegrunnelse" type="text" placeholder="F.eks. spesialversjon iht. ordre" value="${esc(state.meta.lastBegrunnelse)}"></label>
     <label class="f"><span>Vekt inkl. aluminiumsdeksel</span><span class="unit"><input data-path="meta.vekt" type="text" inputmode="decimal" value="${esc(state.meta.vekt)}"><em>kg</em></span></label>
     <label class="f wide"><span>Ekstrautstyr (varenr og navn)</span><textarea data-path="meta.ekstrautstyr" rows="2">${esc(state.meta.ekstrautstyr)}</textarea></label>
   </div></div>
@@ -225,7 +231,7 @@ function showProblems(){const p=problems(state);const el=$('#probList');el.hidde
 /* ---------- events ---------- */
 const form=$('#form');
 form.addEventListener('input',e=>{const t=e.target;if(state.final)return;
-  if(t.dataset.path){setPath(t.dataset.path,t.value);if(/^meta\.(prodordre|serienr|dato)$/.test(t.dataset.path))renderSpNote()}
+  if(t.dataset.path){setPath(t.dataset.path,t.value);if(/^meta\.(prodordre|serienr|dato)$/.test(t.dataset.path))renderSpNote();if(t.dataset.path==='meta.nyttelast')refreshLast()}
   else if(t.dataset.comment){const nr=t.dataset.comment;iv(nr).c=t.value;t.closest('.item').querySelector('.cbtn').classList.toggle('has',!!t.value)}
   else if(t.dataset.val){const nr=t.dataset.val,it=ITEM(nr);iv(nr)[t.dataset.k]=t.value;
     if(it.measure){const a=measureAuto(it,t.value);if(a){iv(nr).s=a;updateItem(nr);updateProgress()}
@@ -242,7 +248,8 @@ form.addEventListener('click',e=>{
   if(state.final)return;
   const sb=e.target.closest('.seg button');
   if(sb){const sg=sb.parentElement,p=sg.dataset.path,v=sb.dataset.v,nv=getPath(p)===v?'':v;setPath(p,nv);sg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===nv)));
-    if(p==='meta.nyttelast')ALL.filter(i=>i.load).forEach(it=>{const h=$(`[data-lh="${it.nr}"]`);if(h){h.textContent=loadHint(it);h.classList.toggle('warn',loadWarn(it))}});
+    if(p==='meta.modell'){const m=modell();if(m){const prev=MODELLER.find(x=>String(x.last)===String(num(state.meta.nyttelast)));if(!state.meta.nyttelast||prev){state.meta.nyttelast=String(m.last);const f=$('[data-path="meta.nyttelast"]');if(f)f.value=state.meta.nyttelast}}
+      const mh=$('#modellHint');mh.hidden=!(m&&m.merknad);mh.textContent=m&&m.merknad||'';$('#lastHint').textContent=m?`Standard for ${m.navn}: ${m.last} kg`:'Fylles ut når modell velges';refreshLast()}
     updateProgress();touched();return}
   const st=e.target.closest('.st');
   if(st){const nr=st.closest('.item').dataset.nr,v=iv(nr);v.s=v.s===st.dataset.s?'':st.dataset.s;updateItem(nr);updateProgress();touched();return}
@@ -259,6 +266,7 @@ form.addEventListener('click',e=>{
   if(na){const s=na.closest('.sec'),nr=s.dataset.sec;state.na[nr]=!state.na[nr];s.classList.toggle('is-na',state.na[nr]);na.setAttribute('aria-pressed',String(state.na[nr]));updateProgress();touched();return}
   const clr=e.target.closest('[data-clr]');if(clr){state[clr.dataset.clr].img='';sigRedraw[clr.dataset.clr]();touched();return}
 });
+function refreshLast(){ALL.filter(i=>i.load).forEach(it=>{const h=$(`[data-lh="${it.nr}"]`);if(h){h.textContent=loadHint(it);h.classList.toggle('warn',loadWarn(it))}});const b=$('#lastBegr');if(b)b.hidden=!lastAvviker()}
 function confirmArm(btn,txt){if(btn.dataset.arm){return true}btn.dataset.arm='1';const o=btn.textContent;btn.textContent=txt;btn.classList.add('armed');setTimeout(()=>{if(btn.isConnected){btn.textContent=o;delete btn.dataset.arm;btn.classList.remove('armed')}},3000);return false}
 function finish(){saveNow();const p=showProblems();if(p.length)return;
   state.final=true;state.finalAt=new Date().toISOString();records[state.id]=clone(state);persistRecords();renderForm();toast('Kontrollen er fullført og låst');
@@ -301,13 +309,13 @@ function renderList(){
   updateCount();
   const q=$('#search').value.trim().toLowerCase();
   const all=Object.values(records).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
-  const rs=all.filter(r=>!q||[r.meta.kunde,r.meta.serienr,r.meta.prodordre,r.meta.salgsordre,r.sig1&&r.sig1.navn].join(' ').toLowerCase().includes(q));
+  const rs=all.filter(r=>!q||[r.meta.kunde,r.meta.serienr,r.meta.modell,r.meta.prodordre,r.meta.salgsordre,r.sig1&&r.sig1.navn].join(' ').toLowerCase().includes(q));
   const pend=all.filter(r=>r.pending).length;const qn=$('#queueNote');qn.hidden=!pend;qn.textContent=pend?`${pend} kontroll${pend>1?'er':''} venter på opplasting. Det skjer automatisk når du har nett og er logget inn.`:'';
   if(!all.length){$('#recs').innerHTML='<p class="empty">Ingen sluttkontroller på denne enheten ennå. Start en ny under «Kontroll».</p>';return}
   if(!rs.length){$('#recs').innerHTML='<p class="empty">Ingen treff.</p>';return}
   $('#recs').innerHTML=rs.map(r=>{const [c,t]=recStatus(r);const m=r.meta;const {nei}=stats(r);
     const sp=r.pending?'<span class="pill wip">Venter på opplasting</span>':r.spUrl?'<span class="pill ok">I leveransearkiv</span>':'';
-    return `<div class="rec" data-id="${esc(r.id)}"><div><h3>SN ${esc(m.serienr||'–')}${r.rev>1?` · rev ${r.rev}`:''}</h3>
+    return `<div class="rec" data-id="${esc(r.id)}"><div><h3>${esc(m.modell||'')} SN ${esc(m.serienr||'–')}${r.rev>1?` · rev ${r.rev}`:''}</h3>
       <div class="meta">${[m.prodordre&&'PO '+m.prodordre,m.salgsordre&&'SO '+m.salgsordre,m.kunde,fmtDate(m.dato),r.sig1&&r.sig1.navn].filter(Boolean).map(esc).join(' · ')}${nei.length?` · <b style="color:var(--warn)">${nei.length} avvik</b>`:''}</div></div>
       <div class="pills"><span class="pill ${c}">${t}</span>${sp}</div>
       <div class="ra"><button class="btn small" data-r="open">Åpne</button><button class="btn small danger" data-r="del">${delArm===r.id?'Bekreft sletting':'Slett fra enheten'}</button></div></div>`}).join('');
@@ -336,8 +344,8 @@ async function buildPdf(s){
   const W=210,M=14,m=s.meta,GREY=[107,107,107],LINE=[208,208,208],WARN=[194,65,12];
   if(logoJpg)doc.addImage(logoJpg,'JPEG',W-M-40,10,40,40*86.469/220.503);
   doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...GREY);doc.text(doc.splitTextToSize('Skjema: '+SKJEMA,110),M,13);
-  doc.setTextColor(17);doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('SLUTTKONTROLL (FAT) WALL-MAN',W/2,34,{align:'center'});
-  const info=[['Dato',fmtDate(m.dato),'Serienummer',m.serienr],['Produksjonsordre',m.prodordre,'Nominell nyttelast',m.nyttelast?m.nyttelast+' kg':''],
+  doc.setTextColor(17);doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('SLUTTKONTROLL (FAT) '+(m.modell||'WALL-MAN'),W/2,34,{align:'center'});
+  const info=[['Dato',fmtDate(m.dato),'Serienummer',m.serienr],['Modell',m.modell,'Nominell nyttelast',(m.nyttelast?m.nyttelast+' kg':'')+(lastAvviker(s)?' (avvik: '+(m.lastBegrunnelse||'')+')':'')],['Produksjonsordre',m.prodordre,'',''],
     ['Salgsordre',m.salgsordre,'Vekt inkl. alu-deksel',m.vekt?m.vekt+' kg':''],['Kunde',m.kunde,'Kontrollrevisjon',String(s.rev||1)+(s.final?' · låst '+fmtTime(s.finalAt):' · IKKE FULLFØRT')]];
   doc.setDrawColor(...LINE);doc.setLineWidth(0.2);doc.line(M,40,W-M,40);
   doc.autoTable({startY:41,body:info,theme:'plain',margin:{left:M,right:M},styles:{font:'helvetica',fontSize:9,cellPadding:{top:1.1,bottom:1.1,left:1,right:1},textColor:17},
@@ -385,7 +393,7 @@ async function buildPdf(s){
   return doc.output('blob');
 }
 const spName=s=>String(s||'').replace(/["*:<>?\/\\|#%]/g,'').replace(/\s+/g,' ').trim().replace(/\.+$/,'');
-const pdfName=s=>`FAT WALL-MAN SN ${spName(s.meta.serienr)||'uten-serienr'} PO ${spName(s.meta.prodordre)||'-'} ${fmtDate(s.meta.dato||today())}${(s.rev||1)>1?' rev '+s.rev:''}.pdf`;
+const pdfName=s=>`FAT ${spName(s.meta.modell)||'WALL-MAN'} SN ${spName(s.meta.serienr)||'uten-serienr'} PO ${spName(s.meta.prodordre)||'-'} ${fmtDate(s.meta.dato||today())}${(s.rev||1)>1?' rev '+s.rev:''}.pdf`;
 async function sharePdf(){
   if(!window.jspdf){toast('PDF-verktøyet er ikke lastet. Åpne appen med nett én gang først.');return}
   saveNow();toast('Lager PDF …');const blob=await buildPdf(state);const name=pdfName(state);
