@@ -3,7 +3,7 @@
    Kontrollpunkter: FAT_WM_Norsk + endringer avtalt i ChatGPT-overlevering (belastningsprøver) + ID20-punkter (FORELØPIG). */
 'use strict';
 const CFG = window.WM_CONFIG || {};
-const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.3.1 (23.11.2026) – IKKE GODKJENT SKJEMA';
+const SKJEMA = 'FAT WALL-MAN – digital prototyp v0.3.2 (23.11.2026) – IKKE GODKJENT SKJEMA';
 
 /* Elementtyper:
    photo:true        bilde påkrevd (minst ett) når punktet merkes JA
@@ -48,9 +48,9 @@ const SECTIONS = [
     ['3.2','Overlastsikringen er innstilt og funksjonskontrollert med 200 kg prøvelast, med forventet utløsning/funksjon bekreftet',{load:{skjema:200}}],
     ['3.3','Holdetest med 200 kg i kurven er gjennomført i minst 30 minutter uten unormal synking, skade eller andre tegn på svikt',{load:{skjema:200}}],
     ['3.4','Lufttilførselen er stengt under holdetesten, og det er kontrollert at det ikke oppstår unormal synking eller luftlekkasje']]},
-  {nr:'4',title:'Kontrollmål',img:'img/kontrollmal-223.png',items:[
+  {nr:'4',title:'Kontrollmål',items:[
     ['4.1','Kontrollmål fra topp skruehode på bunnseksjon til underkant plate opp/ned-sleide',{measure:{nom:10,tol:null,unit:'mm'}}],
-    ['4.2','Opp/ned-sleide går ikke høyere enn 223 mm, målt fra topp stamme med ubemannet kurv. Kontrollmålstrek er markert på stammen etter mal',{measure:{nom:223,tol:5,unit:'mm'}}]]},
+    ['4.2','Opp/ned-sleide går ikke høyere enn 223 mm, målt fra topp stamme med ubemannet kurv. Kontrollmålstrek er markert på stammen etter mal',{measure:{nom:223,tol:5,unit:'mm'},img:'img/kontrollmal-223.png'}]]},
   {nr:'5',title:'Belastningsprøving ID20',prelim:true,optional:true,
     note:'FORELØPIG – prøvemetode, prøvelast og akseptkriterier er ikke teknisk godkjent. Registreres som pilot. Veiledende last = koeffisient × nominell nyttelast.',items:[
     ['5.1','Statisk belastningsprøving er gjennomført etter teknisk godkjent prøvemetode, uten skade, varig deformasjon eller andre tegn på svikt',{photo:true,load:{factor:1.25}}],
@@ -161,13 +161,14 @@ function itemHTML(it){
   return `<div class="item s-${v.s||'none'}" data-nr="${it.nr}"><span class="nr">${it.nr}</span><span class="lbl">${esc(it.text)}${tags?`<span class="tags">${tags}</span>`:''}</span>
     <div class="acts">${it.photo?`<label class="pbtn${ph?' has':''}" aria-label="Ta eller velg bilde for ${it.nr}">${CAM}<span class="pc">${ph||''}</span><input type="file" accept="image/*" data-photo="${it.nr}" hidden></label>`:''}${b('ja','JA','st-ok')}${b('nei','NEI','st-avvik')}${b('ir','I/R','st-ia')}<button type="button" class="cbtn${v.c?' has':''}" aria-label="Kommentar til ${it.nr}" aria-expanded="${showC}">${PEN}</button></div>
     ${extra?`<div class="xtra">${extra}</div>`:''}
+    ${it.img?`<details class="ref"><summary>Vis illustrasjon</summary><img src="${it.img}" alt="Illustrasjon ${it.nr}"></details>`:''}
     ${it.photo?photoStrip(it):''}
     <textarea class="cmt" data-comment="${it.nr}" rows="2" placeholder="${v.s==='nei'?'Beskriv avviket (påkrevd)':'Kommentar til '+it.nr}" ${showC?'':'hidden'}>${esc(v.c)}</textarea></div>`}
 function sectionHTML(sec){const na=!!state.na[sec.nr];
   return `<section class="sec${na?' is-na':''}${sec.prelim?' prelim':''}" data-sec="${sec.nr}"><header class="sec-h"><span class="sec-nr">${sec.nr}</span><h2>${sec.title}${sec.prelim?' <span class="tag pre">FORELØPIG</span>':''}</h2>
     <span class="sec-count" data-count="${sec.nr}"></span><div class="sec-tools">${sec.optional?`<button type="button" class="chip na-toggle" aria-pressed="${na}">Ikke utført</button>`:''}</div></header>
     ${sec.note?`<p class="secnote">${esc(sec.note)}</p>`:''}
-    <div class="sec-body">${sec.img?`<details class="ref"><summary>Vis illustrasjon for kontrollmål</summary><img src="${sec.img}" alt="Illustrasjon kontrollmål 223 mm"></details>`:''}${sec.items.map(itemHTML).join('')}</div></section>`}
+    <div class="sec-body">${sec.items.map(itemHTML).join('')}</div></section>`}
 function sigHTML(n,title){const k='sig'+n;
   return `<div class="sigcol"><h3>${title}</h3><div class="grid">${field('Navn',k+'.navn','text',{req:1})}${field('Dato',k+'.dato','date')}</div>
     <div class="sigbox"><canvas id="${k}" data-sig="${k}" aria-label="Signaturfelt ${n}"></canvas><div class="sigline"></div><span class="sigl">Signer med fingeren</span><button type="button" class="chip sigclr" data-clr="${k}">Tøm</button></div></div>`}
