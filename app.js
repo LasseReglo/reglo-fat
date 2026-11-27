@@ -435,7 +435,7 @@ async function buildD5(s){
   doc.text(doc.splitTextToSize('This record shows the results of the final inspection at Reglo AS. Repeat the overload test once a year, and after every major modification or repair, as described in the user manual, section 6.1.4.',W-2*M),M,y);
   doc.setDrawColor(...LINE);doc.line(M,282,W-M,282);doc.setFontSize(7.5);
   doc.text('Reglo AS · Halumveien 11, 3158 Andebu, Norway · Tlf. +47 33 43 02 80 · info@reglo.no · www.reglo.no · Org.nr. 983 148 336 MVA',W/2,286.5,{align:'center'});
-  doc.text(`FAT record rev ${s.rev||1} · form ${F.kilde}`,W/2,290.5,{align:'center'});
+  doc.text(`FAT record rev ${s.rev||1} · form FAT WM Norsk 5`,W/2,290.5,{align:'center'});
   return doc.output('blob')}
 async function shareD5(){
   if(!window.jspdf){toast('PDF-verktøyet er ikke lastet. Åpne appen med nett én gang først.');return}
