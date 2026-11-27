@@ -3,7 +3,7 @@
    Kontrollpunkter: FAT_WM_Norsk + endringer avtalt i ChatGPT-overlevering (belastningsprøver) + ID20-punkter (FORELØPIG). */
 'use strict';
 const CFG = window.WM_CONFIG || {};
-const SKJEMA_VER = 'digital prototyp v0.5 (23.11.2026) – IKKE GODKJENT SKJEMA';
+const SKJEMA_VER = 'digital prototyp v0.6 (27.11.2026) – IKKE GODKJENT SKJEMA';
 /* Skjemaene ligger i forms.js (FORMS) */
 const FORM=s=>{const x=s||state;const id=(x&&x.formId)||'wallman';return FORMS.find(f=>f.id===id)||FORMS[0]};
 const SECS=s=>FORM(s).sections;
@@ -43,7 +43,7 @@ function blank(fid){fid=fid||'wallman';const f=FORMS.find(x=>x.id===fid)||FORMS[
   return{id:newId(),formId:f.id,createdAt:new Date().toISOString(),rev:1,meta,na:{},items:{},merknad:'',frigitt:'',
   sig1:{navn:'',dato:today(),img:''},sig2:{navn:'',dato:'',img:''}}}
 let records=ls.get(REC_KEY,{});
-Object.values(records).forEach(r=>{if(!r.formId)r.formId='wallman'});
+Object.values(records).forEach(r=>{if(!r.formId)r.formId='wallman';if(r.formId==='wallman'&&Object.keys(r.items||{}).some(k=>k.includes('.')))r.formId='wallman_v05'});
 const curRec=records[ls.get(CUR_KEY,'')];
 let picking=!curRec;
 let state=curRec?Object.assign(blank(curRec.formId),clone(curRec)):blank();
@@ -64,12 +64,19 @@ const iv=nr=>state.items[nr]||(state.items[nr]={});
 const nominell=s=>num((s||state).meta.nyttelast);
 function measureAuto(it,v){const m=it.measure;if(!m)return null;const n=num(v);if(n==null)return null;
   if(m.tol!=null&&m.nom!=null)return Math.abs(n-m.nom)<=m.tol?'ja':'nei';
-  if(m.min!=null||m.max!=null)return (m.min==null||n>=m.min)&&(m.max==null||n<=m.max)?'ja':'nei';return null}
-const measureManual=m=>!(m.tol!=null&&m.nom!=null)&&m.min==null&&m.max==null;
-function measureText(m){const u=m.unit;if(m.tol!=null&&m.nom!=null)return `Krav: ${m.nom} ± ${m.tol} ${u}`;
+  if(m.min!=null||m.max!=null||m.gt!=null)return (m.min==null||n>=m.min)&&(m.gt==null||n>m.gt)&&(m.max==null||n<=m.max)?'ja':'nei';
+  if(m.record)return 'ja';return null}
+const measureManual=m=>!(m.tol!=null&&m.nom!=null)&&m.min==null&&m.max==null&&m.gt==null&&!m.record;
+function measureText(m){const u=m.unit;if(m.record)return 'Registreres – ingen grense';if(m.tol!=null&&m.nom!=null)return `Krav: ${m.nom} ± ${m.tol} ${u} (${m.nom-m.tol}–${m.nom+m.tol} ${u})`;
+  if(m.gt!=null&&m.max!=null)return `Krav: over ${m.gt} og høyst ${m.max} ${u}`;if(m.gt!=null)return `Krav: over ${m.gt} ${u}`;
   if(m.min!=null&&m.max!=null)return `Krav: ${m.min}–${m.max} ${u}`;if(m.max!=null)return `Krav: maks ${m.max} ${u}`;if(m.min!=null)return `Krav: min. ${m.min} ${u}`;
   return `Nominelt ${m.nom} ${u}. Toleranse ikke fastsatt – vurder og merk manuelt`}
-const measureHint=(it,v)=>{const a=measureAuto(it,v);return esc(measureText(it.measure))+(a?` · <b class="${a}">${a==='ja'?'innenfor':'UTENFOR'}</b>`:'')};
+const measureHint=(it,v)=>{const a=measureAuto(it,v);return esc(measureText(it.measure))+(a&&!it.measure.record?` · <b class="${a}">${a==='ja'?'innenfor':'UTENFOR'}</b>`:'')};
+/* rekkefølge: et seq-punkt kan besvares først når forrige seq-punkt i skjemaet er besvart */
+function seqPrev(it,s){s=s||state;if(!it.seq)return null;const seqs=ALLI(s).filter(i=>i.seq);const i=seqs.findIndex(x=>x.nr===it.nr);return i>0?seqs[i-1]:null}
+function seqBlocked(it,s){s=s||state;const p=seqPrev(it,s);return !!(p&&!((s.items[p.nr]||{}).s))}
+const photosOf=(nr,slot,s)=>(((s||state).items[nr]||{}).photos||[]).filter(p=>!slot||p.slot===slot);
+const slotsFilled=(it,s)=>(it.photoSlots||[]).every(sl=>photosOf(it.nr,sl.k,s).length>0);
 function loadHint(it,s){s=s||state;const L=it.load;if(!L)return'';const nl=nominell(s);
   if(L.factor){return nl?`Veiledende: ${fmtNum(L.factor)} × ${fmtNum(nl)} kg = ${fmtNum(L.factor*nl)} kg (FORELØPIG, ikke fastsatt)`:'Velg nominell nyttelast øverst for veiledende last'}
   if(L.skjema){const b=FORM(s).baseLast;return b&&nl&&nl!==b?`Skjemaets ${L.skjema} kg er satt for ${b} kg nyttelast. Denne maskinen: ${fmtNum(nl)} kg – avklar prøvelast med Teknisk`:`Skjema: ${L.skjema} kg`}
@@ -82,16 +89,18 @@ function problems(s){const p=[];const m=s.meta;
   F.head.forEach(h=>{if(h.req&&!String(m[h.k]||'').trim())p.push(`${h.l} mangler`)});
   if(lastAvviker(s)&&!String(m.lastBegrunnelse||'').trim())p.push(`Nyttelast ${m.nyttelast} kg avviker fra standard for ${F.navn} (${F.defLast} kg) – begrunnelse mangler`);
   SECS(s).forEach(sec=>{if(s.na[sec.nr])return;sec.items.forEach(it=>{const v=s.items[it.nr]||{};
-    if(!v.s){p.push(`${it.nr}: ikke besvart`);return}
+    if(!v.s&&it.photoSlots){it.photoSlots.forEach(sl=>{if(!photosOf(it.nr,sl.k,s).length)p.push(`${it.nr}: bilde mangler – ${sl.l.toLowerCase()}`)});return}
+    if(!v.s){p.push(it.valueOnly?`${it.nr}: ${((it.measure&&it.measure.label)||'verdi').toLowerCase()} mangler`:`${it.nr}: ikke besvart`);return}
     if(v.s==='nei'&&!String(v.c||'').trim())p.push(`${it.nr}: NEI krever avviksbeskrivelse`);
     if(v.s==='ir'&&!String(v.c||'').trim()&&(it.photo||it.load||it.measure||it.mf))p.push(`${it.nr}: I/R krever begrunnelse`);
     if(v.s==='ja'&&it.photo&&!(v.photos||[]).length)p.push(`${it.nr}: bilde mangler`);
+    if(it.photoSlots)it.photoSlots.forEach(sl=>{if(!photosOf(it.nr,sl.k,s).length)p.push(`${it.nr}: bilde mangler – ${sl.l.toLowerCase()}`)});
     if(v.s==='ja'&&it.measure&&num(v.v)==null)p.push(`${it.nr}: måleverdi mangler`);
     if(v.s==='ja'&&it.load&&num(v.last)==null)p.push(`${it.nr}: faktisk prøvelast mangler`);
     if(v.s==='ja'&&it.read&&!String(v.r||'').trim())p.push(`${it.nr}: ${(it.read.label||'verdi').toLowerCase()} mangler`)})});
   const {nei}=stats(s);
   if(!F.nofrigiv){if(!s.frigitt)p.push('Frigivelse (JA/NEI) er ikke valgt');
-    if(s.frigitt==='JA'&&nei.length)p.push(`Kan ikke frigis med ${nei.length} NEI-punkt – lukk avvik eller velg NEI`)}
+    if(s.frigitt==='JA'&&nei.length)p.push(`Kan ikke signeres som godkjent: ${nei.length} punkt står på NEI eller utenfor grensen (${nei.map(i=>i.nr).join(', ')}) – velg NEI`)}
   F.sigs.forEach(([k,t])=>{if(!s[k]||!s[k].navn||!s[k].img)p.push(`${t}: navn eller signatur mangler`)});
   return p}
 
@@ -102,15 +111,19 @@ function field(label,path,type='text',opts={}){
   return `<label class="f${opts.wide?' wide':''}"><span>${label}${opts.req?' <b class="req">*</b>':''}</span><input id="f-${path.replace(/\./g,'-')}" data-path="${path}" type="${type}" value="${esc(getPath(path))}" ${opts.attrs||''}></label>`}
 function seg(path,opts){const v=getPath(path)||'';
   return `<div class="seg" data-path="${path}" role="group">${opts.map(o=>`<button type="button" data-v="${esc(o)}" aria-pressed="${v===o}">${esc(o)}</button>`).join('')}</div>`}
-function photoStrip(it){const ph=(state.items[it.nr]||{}).photos||[];
-  return `<div class="thumbs" data-thumbs="${it.nr}">${ph.map(p=>`<span class="th" data-pid="${p.id}"><img alt="Bilde ${it.nr}" data-src="${p.id}"><button type="button" class="thdel" aria-label="Slett bilde">×</button></span>`).join('')}</div>`}
+function photoStrip(it){const ph=(state.items[it.nr]||{}).photos||[];const sl=k=>((it.photoSlots||[]).find(x=>x.k===k)||{}).l;
+  return `<div class="thumbs" data-thumbs="${it.nr}">${ph.map(p=>`<span class="th" data-pid="${p.id}"><img alt="Bilde ${it.nr}" data-src="${p.id}">${p.slot?`<i class="thl">${esc(sl(p.slot)||'')}</i>`:''}<button type="button" class="thdel" aria-label="Slett bilde">×</button></span>`).join('')}</div>`}
+function camBtn(it,slot){const n=photosOf(it.nr,slot&&slot.k).length;
+  return `<label class="pbtn${n?' has':''}${slot?' slot':''}" aria-label="Ta eller velg bilde${slot?': '+esc(slot.l):''} for ${it.nr}">${CAM}${slot?`<span class="pl">${esc(slot.l)}</span>`:''}<span class="pc">${n||''}</span><input type="file" accept="image/*" data-photo="${it.nr}" ${slot?`data-slot="${slot.k}"`:''} hidden></label>`}
 function itemHTML(it){
-  const v=state.items[it.nr]||{};const showC=!!v.c||v.s==='nei';const ph=(v.photos||[]).length;
-  const b=(s,t,c)=>`<button type="button" class="st ${c}" data-s="${s}" aria-pressed="${v.s===s}">${t}</button>`;
-  const tags=(it.prelim?'<span class="tag pre">FORELØPIG</span>':'')+(it.mf?'<span class="tag mf">MF</span>':'')+(it.photo?'<span class="tag">Bilde påkrevd</span>':'');
+  const v=state.items[it.nr]||{};const showC=!!v.c||v.s==='nei';const F=FORM();const blk=seqBlocked(it);
+  const b=(s,t,c)=>`<button type="button" class="st ${c}" data-s="${s}" aria-pressed="${v.s===s}" ${blk?'disabled':''}>${t}</button>`;
+  const tags=(it.safety?'<span class="tag safe">Sikkerhet</span>':'')+(it.prelim?'<span class="tag pre">FORELØPIG</span>':'')+(it.mf?'<span class="tag mf">MF</span>':'')+(it.photo||it.photoSlots?'<span class="tag">Bilde påkrevd</span>':'')+(blk?`<span class="tag wait">Etter punkt ${esc(seqPrev(it).nr)}</span>`:'');
+  const irBtn=(!F.noIR||it.ir)?b('ir',it.ir&&F.noIR?'I/A':'I/R','st-ia'):'';
+  const stat=it.valueOnly?`<span class="vstat s-${v.s||'none'}">${v.s==='ja'?(it.measure&&it.measure.record?'Registrert':'Godkjent'):v.s==='nei'?'Ikke godkjent':'Fyll inn verdi'}</span>`:'';
   let extra='';
   if(it.measure){const m=it.measure;
-    extra+=`<div class="xrow"><label class="mini"><span>Måleverdi</span><span class="unit"><input data-val="${it.nr}" data-k="v" type="text" inputmode="decimal" value="${esc(v.v)}"><em>${m.unit}</em></span></label>
+    extra+=`<div class="xrow"><label class="mini"><span>${esc(m.label||'Måleverdi')}</span><span class="unit"><input data-val="${it.nr}" data-k="v" type="text" inputmode="decimal" value="${esc(v.v)}" ${blk?'disabled':''}><em>${m.unit}</em></span></label>
       <span class="xhint ${measureManual(m)?'warn':''}">${measureHint(it,v.v)}</span></div>`}
   if(it.read){const r=it.read;
     extra+=`<div class="xrow"><label class="mini${r.text?' wide':''}"><span>${esc(r.label||'Avlest')}</span>${r.text?`<input data-val="${it.nr}" data-k="r" type="text" value="${esc(v.r)}">`:`<span class="unit"><input data-val="${it.nr}" data-k="r" type="text" inputmode="decimal" value="${esc(v.r)}"><em>${esc(r.unit||'')}</em></span>`}</label>
@@ -119,10 +132,12 @@ function itemHTML(it){
   if(it.load){extra+=`<div class="xrow"><label class="mini"><span>Faktisk prøvelast</span><span class="unit"><input data-val="${it.nr}" data-k="last" type="text" inputmode="decimal" value="${esc(v.last)}"><em>kg</em></span></label>
       <span class="xhint${loadWarn(it)?' warn':''}" data-lh="${it.nr}">${esc(loadHint(it))}</span></div>`}
   return `<div class="item s-${v.s||'none'}" data-nr="${it.nr}"><span class="nr">${it.nr}</span><span class="lbl">${esc(it.text)}${tags?`<span class="tags">${tags}</span>`:''}</span>
-    <div class="acts">${it.photo?`<label class="pbtn${ph?' has':''}" aria-label="Ta eller velg bilde for ${it.nr}">${CAM}<span class="pc">${ph||''}</span><input type="file" accept="image/*" data-photo="${it.nr}" hidden></label>`:''}${b('ja','JA','st-ok')}${b('nei','NEI','st-avvik')}${b('ir','I/R','st-ia')}<button type="button" class="cbtn${v.c?' has':''}" aria-label="Kommentar til ${it.nr}" aria-expanded="${showC}">${PEN}</button></div>
+    ${it.photoSlots?`<div class="slots">${it.photoSlots.map(sl=>camBtn(it,sl)).join('')}</div>`:''}
+    <div class="acts${blk?' blk':''}">${it.photo?camBtn(it):''}${it.valueOnly?stat:b('ja','JA','st-ok')+b('nei','NEI','st-avvik')+irBtn}<button type="button" class="cbtn${v.c?' has':''}" aria-label="Kommentar til ${it.nr}" aria-expanded="${showC}">${PEN}</button></div>
     ${extra?`<div class="xtra">${extra}</div>`:''}
     ${it.img?`<details class="ref"><summary>Vis illustrasjon</summary><img src="${it.img}" alt="Illustrasjon ${it.nr}"></details>`:''}
-    ${it.photo?photoStrip(it):''}
+    ${it.ir&&it.irHint?`<p class="xhint irh">${esc(it.irHint)}</p>`:''}
+    ${it.photo||it.photoSlots?photoStrip(it):''}
     <textarea class="cmt" data-comment="${it.nr}" rows="2" placeholder="${v.s==='nei'?'Beskriv avviket (påkrevd)':'Kommentar til '+it.nr}" ${showC?'':'hidden'}>${esc(v.c)}</textarea></div>`}
 function sectionHTML(sec){const na=!!state.na[sec.nr];
   return `<section class="sec${na?' is-na':''}${sec.prelim?' prelim':''}" data-sec="${sec.nr}"><header class="sec-h"><span class="sec-nr">${sec.nr}</span><h2>${sec.title}${sec.prelim?' <span class="tag pre">FORELØPIG</span>':''}</h2>
@@ -139,8 +154,8 @@ function headHTML(){const F=FORM();return F.head.map(h=>{const p='meta.'+h.k,req
   if(h.area)return `<label class="f wide"><span>${esc(h.l)}${req}</span><textarea data-path="${p}" rows="2">${esc(state.meta[h.k])}</textarea></label>`;
   if(h.unit)return `<label class="f"><span>${esc(h.l)}${req}</span><span class="unit"><input data-path="${p}" type="text" inputmode="decimal" value="${esc(state.meta[h.k])}"><em>${esc(h.unit)}</em></span></label>`;
   return field(esc(h.l),p,h.type||'text',{req:h.req,wide:h.wide,attrs:h.num?'inputmode="numeric"':''})}).join('')}
-function pickerHTML(){const kats=[...new Set(FORMS.map(f=>f.kat))];
-  return `<div class="picker"><p class="note" style="margin:0 0 6px">Velg skjema for ny kontroll</p>${kats.map(k=>`<h2 class="pk">${esc(k)}</h2><div class="pgrid">${FORMS.filter(f=>f.kat===k).map(f=>`<button type="button" class="pcard" data-form="${f.id}"><b>${esc(f.navn)}</b></button>`).join('')}</div>`).join('')}</div>`}
+function pickerHTML(){const kats=[...new Set(FORMS.filter(f=>!f.hidden).map(f=>f.kat))];
+  return `<div class="picker"><p class="note" style="margin:0 0 6px">Velg skjema for ny kontroll</p>${kats.map(k=>`<h2 class="pk">${esc(k)}</h2><div class="pgrid">${FORMS.filter(f=>f.kat===k&&!f.hidden).map(f=>`<button type="button" class="pcard" data-form="${f.id}"><b>${esc(f.navn)}</b></button>`).join('')}</div>`).join('')}</div>`}
 function renderForm(){
   if(picking){$('h1').textContent='NY KONTROLL';$('#progRow').hidden=true;$('#form').classList.remove('locked');$('#form').innerHTML=pickerHTML();return}
   const F=FORM();$('h1').textContent=F.tittel;if($('#form').hidden===false)$('#progRow').hidden=false;
@@ -161,7 +176,7 @@ function renderForm(){
     </div>
     <div class="problist" id="probList" hidden></div>
     <div class="endacts">${f?'':'<button class="btn" type="button" data-act="check">Sjekk utfylling</button><button class="btn primary" type="button" data-act="finish">Fullfør og lås</button>'}
-      ${f?'<button class="btn" type="button" data-act="pdf">Del / lagre PDF</button><button class="btn primary" type="button" data-act="sp">Last opp til leveransearkiv</button>':''}</div>
+      ${f?'<button class="btn" type="button" data-act="pdf">Del / lagre PDF</button>':''}${F.d5?'<button class="btn" type="button" data-act="d5">Kunderapport D-5</button>':''}${f?'<button class="btn primary" type="button" data-act="sp">Last opp til leveransearkiv</button>':''}</div>
     <p class="note" id="spNote"></p>
   </section>`;
   Object.keys(sigRedraw).forEach(k=>delete sigRedraw[k]);F.sigs.forEach(([k])=>initSignature(k));loadThumbs();updateProgress();renderSpNote();
@@ -194,30 +209,37 @@ form.addEventListener('input',e=>{const t=e.target;if(state.final)return;
   if(t.dataset.path){setPath(t.dataset.path,t.value);if(/^meta\.(prodordre|serienr|dato)$/.test(t.dataset.path))renderSpNote();if(t.dataset.path==='meta.nyttelast')refreshLast()}
   else if(t.dataset.comment){const nr=t.dataset.comment;iv(nr).c=t.value;t.closest('.item').querySelector('.cbtn').classList.toggle('has',!!t.value)}
   else if(t.dataset.val){const nr=t.dataset.val,it=ITEM(nr);iv(nr)[t.dataset.k]=t.value;
-    if(it.measure&&t.dataset.k==='v'){const a=measureAuto(it,t.value);if(a){iv(nr).s=a;updateItem(nr);updateProgress()}
-      t.closest('.xrow').querySelector('.xhint').innerHTML=measureHint(it,t.value)}}
+    if(it.measure&&t.dataset.k==='v'){const a=measureAuto(it,t.value);const before=iv(nr).s||'';
+      if(a)iv(nr).s=a;else if(it.valueOnly)iv(nr).s='';
+      t.closest('.xrow').querySelector('.xhint').innerHTML=measureHint(it,t.value);
+      if((iv(nr).s||'')!==before){updateItem(nr);updateProgress();refreshSeq()}}}
   touched()});
-form.addEventListener('change',async e=>{const t=e.target;if(!t.dataset.photo||state.final)return;const nr=t.dataset.photo,it=ITEM(nr);const files=[...t.files];t.value='';
-  for(const file of files){try{const d=await shrink(file);const id='p'+newId();await IDB.put(id,d);photoCache[id]=d;const v=iv(nr);(v.photos=v.photos||[]).push({id,t:new Date().toISOString()});
-    if(it.autoJa&&!v.s)v.s='ja'}catch(err){toast('Bildet kunne ikke lagres: '+err.message)}}
-  const el=$(`.item[data-nr="${nr}"]`);el.querySelector('[data-thumbs]').outerHTML=photoStrip(it);const pb=el.querySelector('.pbtn');const n=(iv(nr).photos||[]).length;pb.classList.toggle('has',!!n);pb.querySelector('.pc').textContent=n||'';
-  loadThumbs();updateItem(nr);updateProgress();saveNow();toast(it.autoJa?'Bilde lagret – punktet er merket JA':'Bilde lagret. Merk resultatet selv – bilde alene er ikke bestått prøve')});
+form.addEventListener('change',async e=>{const t=e.target;if(!t.dataset.photo||state.final)return;const nr=t.dataset.photo,it=ITEM(nr),slot=t.dataset.slot||'';const files=[...t.files];t.value='';
+  if(seqBlocked(it)){toast(`Utføres etter punkt ${seqPrev(it).nr}`);return}
+  for(const file of files){try{const d=await shrink(file);const id='p'+newId();await IDB.put(id,d);photoCache[id]=d;const v=iv(nr);(v.photos=v.photos||[]).push(Object.assign({id,t:new Date().toISOString()},slot?{slot}:{}));
+    if(it.autoJa&&!v.s&&(!it.photoSlots||slotsFilled(it)))v.s='ja'}catch(err){toast('Bildet kunne ikke lagres: '+err.message)}}
+  rerenderItem(nr);updateProgress();saveNow();refreshSeq();
+  toast(it.autoJa?(iv(nr).s==='ja'?'Bilde lagret – punktet er merket JA':'Bilde lagret – ta også de andre bildene'):'Bilde lagret. Merk resultatet selv – bilde alene er ikke bestått prøve')});
+function rerenderItem(nr){const el=$(`.item[data-nr="${nr}"]`);if(!el)return;el.outerHTML=itemHTML(ITEM(nr));loadThumbs()}
+function refreshSeq(){if(!ALLI().some(i=>i.seq))return;ALLI().filter(i=>i.seq).forEach(it=>{const el=$(`.item[data-nr="${it.nr}"]`);if(!el)return;const want=seqBlocked(it);if(want!==el.querySelector('.acts').classList.contains('blk'))rerenderItem(it.nr)})}
 form.addEventListener('click',e=>{
   const pc=e.target.closest('[data-form]');
   if(pc){state=blank(pc.dataset.form);picking=false;ls.set(CUR_KEY,'');spErr='';renderForm();$('#progRow').hidden=false;window.scrollTo(0,0);pushFormState();return}
   const act=e.target.closest('[data-act]');
-  if(act){const a=act.dataset.act;if(a==='pdf')sharePdf();else if(a==='sp')uploadCurrent();else if(a==='check')showProblems();else if(a==='finish')finish();else if(a==='rev')newRevision();return}
+  if(act){const a=act.dataset.act;if(a==='pdf')sharePdf();else if(a==='d5')shareD5();else if(a==='sp')uploadCurrent();else if(a==='check')showProblems();else if(a==='finish')finish();else if(a==='rev')newRevision();return}
   if(state.final)return;
   const sb=e.target.closest('.seg button');
   if(sb){const sg=sb.parentElement,p=sg.dataset.path,v=sb.dataset.v,nv=getPath(p)===v?'':v;setPath(p,nv);sg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===nv)));
     updateProgress();touched();return}
   const st=e.target.closest('.st');
-  if(st){const nr=st.closest('.item').dataset.nr,v=iv(nr);v.s=v.s===st.dataset.s?'':st.dataset.s;updateItem(nr);updateProgress();touched();return}
+  if(st){const nr=st.closest('.item').dataset.nr,it=ITEM(nr),v=iv(nr);if(seqBlocked(it)){toast(`Utføres etter punkt ${seqPrev(it).nr}`);return}
+    v.s=v.s===st.dataset.s?'':st.dataset.s;updateItem(nr);updateProgress();refreshSeq();touched();return}
   const cb=e.target.closest('.cbtn');
   if(cb){const ta=cb.closest('.item').querySelector('.cmt');ta.hidden=!ta.hidden;cb.setAttribute('aria-expanded',String(!ta.hidden));if(!ta.hidden)ta.focus();return}
   const td=e.target.closest('.thdel');
   if(td){const th=td.closest('.th'),nr=th.closest('.item').dataset.nr,pid=th.dataset.pid;if(!confirmArm(td,'Slett?'))return;
-    iv(nr).photos=(iv(nr).photos||[]).filter(p=>p.id!==pid);th.remove();IDB.del(pid).catch(()=>{});const pb=$(`.item[data-nr="${nr}"] .pbtn`);const n=iv(nr).photos.length;pb.classList.toggle('has',!!n);pb.querySelector('.pc').textContent=n||'';touched();return}
+    const it=ITEM(nr);iv(nr).photos=(iv(nr).photos||[]).filter(p=>p.id!==pid);IDB.del(pid).catch(()=>{});
+    if(it.photoSlots&&it.autoJa&&!slotsFilled(it))iv(nr).s='';rerenderItem(nr);updateProgress();touched();return}
   const na=e.target.closest('.na-toggle');
   if(na){const s=na.closest('.sec'),nr=s.dataset.sec;state.na[nr]=!state.na[nr];s.classList.toggle('is-na',state.na[nr]);na.setAttribute('aria-pressed',String(state.na[nr]));updateProgress();touched();return}
   const clr=e.target.closest('[data-clr]');if(clr){state[clr.dataset.clr].img='';sigRedraw[clr.dataset.clr]();touched();return}
@@ -327,13 +349,15 @@ async function buildPdf(s){
       if(it.read&&v.r)val.push(`${v.r}${it.read.unit?' '+it.read.unit:''}`);
       if(it.load&&v.last)val.push(`Last ${v.last} kg`);
       if((v.photos||[]).length)val.push(`${v.photos.length} bilde${v.photos.length>1?'r':''}`);
-      body.push([it.nr,(it.mf?'[MF] ':'')+it.text,RES[v.s]||'',val.join('\n'),v.c||''])})});
+      if(it.valueOnly&&v.s==='nei')val.push('UTENFOR GRENSE');
+      body.push([it.nr,(it.mf?'[MF] ':'')+(it.safety?'[S] ':'')+it.text,(v.s==='ir'&&F.noIR)?'IKKE AKTUELT':(it.valueOnly&&v.s==='ja'?(it.measure&&it.measure.record?'REG.':'OK'):RES[v.s]||''),val.join('\n'),v.c||''])})});
   doc.autoTable({startY:y,head:[['Nr','Kontrollpunkt','Resultat','Verdi / evidens','Kommentar / avvik']],body,theme:'grid',margin:{left:M,right:M,bottom:18},
     styles:{font:'helvetica',fontSize:8,cellPadding:1.5,lineColor:LINE,lineWidth:0.15,textColor:17,valign:'middle'},
     headStyles:{fillColor:[255,255,255],textColor:17,fontStyle:'bold',lineColor:[17,17,17]},
     columnStyles:{0:{cellWidth:10},1:{cellWidth:80},2:{cellWidth:16,halign:'center'},3:{cellWidth:30},4:{}},
     didParseCell:d=>{if(d.section==='body'&&d.column.index===2){if(d.cell.raw==='NEI'){d.cell.styles.textColor=WARN;d.cell.styles.fontStyle='bold'}else if(d.cell.raw==='JA')d.cell.styles.fontStyle='bold'}}});
-  y=doc.lastAutoTable.finalY+7;
+  y=doc.lastAutoTable.finalY+(ALLI(s).some(i=>i.safety)?4:7);
+  if(ALLI(s).some(i=>i.safety)){doc.setFontSize(7.5);doc.setTextColor(...GREY);doc.text('[S] = sikkerhetsrad. Nei eller verdi utenfor grensen betyr at FAT-en ikke er godkjent.',M,y);doc.setTextColor(17);y+=5}
   const need=h=>{if(y+h>278){doc.addPage();y=20}};
   doc.setFontSize(10);
   if(s.merknad){const l=doc.splitTextToSize(s.merknad,W-2*M);need(8+l.length*4.2);doc.setFont('helvetica','bold');doc.text('Merknader',M,y);y+=5;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(l,M,y);y+=l.length*4.2+5;doc.setFontSize(10)}
@@ -350,7 +374,7 @@ async function buildPdf(s){
     for(const {it,p} of phs){const d=await photoData(p.id);if(!d)continue;const h=Math.min(cw*d.h/d.w,95);const w=h*d.w/d.h;
       if(col===0&&y+h+10>282){doc.addPage();y=18}
       const x=M+col*(cw+6);try{doc.addImage(d.src,'JPEG',x,y,w,h)}catch(e){}
-      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...GREY);doc.text(doc.splitTextToSize(`${it.nr} ${it.text} · ${fmtTime(p.t)}`,cw),x,y+h+3.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...GREY);const slotL=p.slot&&it.photoSlots?((it.photoSlots.find(z=>z.k===p.slot)||{}).l+': '):'';doc.text(doc.splitTextToSize(`${it.nr} ${slotL}${it.text} · ${fmtTime(p.t)}`,cw),x,y+h+3.5);
       rowH=Math.max(rowH,h+10);col++;if(col===2){col=0;y+=rowH;rowH=0}}
   }
   const pages=doc.getNumberOfPages();
@@ -360,7 +384,9 @@ async function buildPdf(s){
   return doc.output('blob');
 }
 const spName=s=>String(s||'').replace(/["*:<>?\/\\|#%]/g,'').replace(/\s+/g,' ').trim().replace(/\.+$/,'');
-const pdfName=s=>{const F=FORM(s),m=s.meta;return [F.nofrigiv?'':'FAT',F.kort,m.serienr&&'SN '+spName(m.serienr),m.prodordre&&'PO '+spName(m.prodordre),!m.prodordre&&m.salgsordre&&'Ordre '+spName(m.salgsordre),fmtDate(m.dato||today()),(s.rev||1)>1&&'rev '+s.rev].filter(Boolean).join(' ')+'.pdf'};
+const isoDate=s=>(s.meta.dato||today()).slice(0,10);
+const keyName=(pre,s)=>{const m=s.meta,c=x=>spName(x).replace(/\s+/g,'');return `${pre}_${c(m.serienr)||'uten-serienr'}_${c(m.salgsordre)||'uten-SO'}_${isoDate(s)}${(s.rev||1)>1?'_rev'+s.rev:''}.pdf`};
+const pdfName=s=>{const F=FORM(s),m=s.meta;if(F.fileKey)return keyName('FAT_'+F.fileKey,s);return [F.nofrigiv?'':'FAT',F.kort,m.serienr&&'SN '+spName(m.serienr),m.prodordre&&'PO '+spName(m.prodordre),!m.prodordre&&m.salgsordre&&'Ordre '+spName(m.salgsordre),fmtDate(m.dato||today()),(s.rev||1)>1&&'rev '+s.rev].filter(Boolean).join(' ')+'.pdf'};
 async function sharePdf(){
   if(!window.jspdf){toast('PDF-verktøyet er ikke lastet. Åpne appen med nett én gang først.');return}
   saveNow();toast('Lager PDF …');const blob=await buildPdf(state);const name=pdfName(state);
@@ -368,6 +394,57 @@ async function sharePdf(){
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name})}catch(e){}return}
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
+
+/* ---------- Kunderapport D-5 (engelsk, én side) ---------- */
+function d5Problems(s){const p=[];const F=FORM(s);
+  if(!s.final)p.push('FAT-en må være fullført, signert og låst først');
+  if(s.frigitt!=='JA')p.push('FAT-en er ikke signert som godkjent (frigivelse JA)');
+  const {nei}=stats(s);nei.forEach(it=>p.push(`${it.nr}: ${it.valueOnly?'verdi utenfor grensen':'NEI'} – ${it.text.slice(0,70)}${it.text.length>70?'…':''}`));
+  problems(s).forEach(x=>{if(!p.includes(x))p.push(x)});return p}
+async function buildD5(s){
+  await logoReady;const F=FORM(s),m=s.meta,V=nr=>((s.items[nr]||{}).v||'');
+  const sigImg={};for(const [k] of F.sigs)sigImg[k]=s[k]&&s[k].img?await toJpeg(s[k].img,560,140):null;
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4',compress:true});
+  const W=210,M=16,GREY=[107,107,107],LINE=[208,208,208],GREEN=[122,185,41];
+  if(logoJpg)doc.addImage(logoJpg,'JPEG',W-M-40,12,40,40*86.469/220.503);
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(17);doc.text('Final inspection record – WALL-MAN',W/2,40,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...GREY);doc.text('D-5 Load, overload and function tests',W/2,46.5,{align:'center'});
+  doc.setDrawColor(...LINE);doc.setLineWidth(0.2);doc.line(M,52,W-M,52);
+  doc.autoTable({startY:53,body:[['Model','WALL-MAN','Serial no.',m.serienr||''],['Order no. (SO)',m.salgsordre||'','Customer',m.kunde||''],['Date of test',isoDate(s),'Rated load','150 kg (1 person + 70 kg)']],
+    theme:'plain',margin:{left:M,right:M},styles:{font:'helvetica',fontSize:9.5,cellPadding:{top:1.2,bottom:1.2,left:1,right:1},textColor:17},columnStyles:{0:{textColor:GREY,cellWidth:30},1:{cellWidth:55},2:{textColor:GREY,cellWidth:27}}});
+  let y=doc.lastAutoTable.finalY+1;doc.line(M,y,W-M,y);
+  const rows=[
+    ['Static test','225 kg (1.5 × rated load), 30 min, no permanent deformation','Passed'],
+    ['Dynamic test','165 kg (1.1 × rated load), all movements, full stroke','Passed'],
+    ['Overload device','Trips at: inner position '+V('35')+' kg, outer position '+V('36')+' kg (requirement: above 150 kg and max. 180 kg)','Passed'],
+    ['Overload warning','Acoustic and visual, lifting blocked','Passed'],
+    ['Lowering with overload activated','Control lever and emergency lowering','Passed'],
+    ['Sealing','Overload setting and pressure regulator sealed with locking lacquer','Yes'],
+    ['Leak test','150 kg, 30 min, sink '+V('41')+' mm (max. 100 mm)','Passed'],
+    ['Function checks','Emergency lowering, chain slack device, brake and self-closing gate checked','Passed']];
+  doc.autoTable({startY:y+5,head:[['Test','Result / value','Status']],body:rows,theme:'grid',margin:{left:M,right:M},
+    styles:{font:'helvetica',fontSize:9.5,cellPadding:2.2,lineColor:LINE,lineWidth:0.15,textColor:17,valign:'middle'},
+    headStyles:{fillColor:[255,255,255],textColor:17,fontStyle:'bold',lineColor:[17,17,17]},
+    columnStyles:{0:{cellWidth:44,fontStyle:'bold'},1:{},2:{cellWidth:22,halign:'center',fontStyle:'bold',textColor:GREEN}}});
+  y=doc.lastAutoTable.finalY+14;
+  const sb=(x,title,sg,img)=>{doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(17);doc.text(title,x,y);doc.setFont('helvetica','normal');
+    doc.text(`${sg.navn||''}   ${sg.dato||''}`,x,y+5);if(img){try{doc.addImage(img,'JPEG',x,y+7,72,18)}catch(e){}}
+    doc.setDrawColor(...GREY);doc.line(x,y+27,x+80,y+27);doc.setFontSize(7.5);doc.setTextColor(...GREY);doc.text('Name, date and signature',x,y+30.5)};
+  sb(M,'Tested by',s.sig1||{},sigImg.sig1);sb(W/2+4,'Approved by',s.sig2||{},sigImg.sig2);
+  y+=44;doc.setFontSize(8.5);doc.setTextColor(...GREY);
+  doc.text(doc.splitTextToSize('This record shows the results of the final inspection at Reglo AS. Repeat the overload test once a year, and after every major modification or repair, as described in the user manual, section 6.1.4.',W-2*M),M,y);
+  doc.setDrawColor(...LINE);doc.line(M,282,W-M,282);doc.setFontSize(7.5);
+  doc.text('Reglo AS · Halumveien 11, 3158 Andebu, Norway · Tlf. +47 33 43 02 80 · info@reglo.no · www.reglo.no · Org.nr. 983 148 336 MVA',W/2,286.5,{align:'center'});
+  doc.text(`FAT record rev ${s.rev||1} · form ${F.kilde}`,W/2,290.5,{align:'center'});
+  return doc.output('blob')}
+async function shareD5(){
+  if(!window.jspdf){toast('PDF-verktøyet er ikke lastet. Åpne appen med nett én gang først.');return}
+  saveNow();const p=d5Problems(state);const el=$('#probList');
+  if(p.length){el.hidden=false;el.innerHTML=`<b>Kunderapport D-5 kan ikke lages ennå:</b><ul>${p.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;el.scrollIntoView({behavior:'smooth',block:'center'});return}
+  toast('Lager kunderapport …');const blob=await buildD5(state);const name=keyName('D-5_FAT_'+FORM().fileKey,state);
+  const file=new File([blob],name,{type:'application/pdf'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name})}catch(e){}return}
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 
 /* ---------- Microsoft-innlogging ---------- */
 const configured=!!(CFG.clientId&&!/SETT-INN/i.test(CFG.clientId)&&window.msal&&CFG.leveranseFolderId&&!/SETT-INN/i.test(CFG.leveranseFolderId));

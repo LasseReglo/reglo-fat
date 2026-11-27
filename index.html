@@ -183,6 +183,17 @@ html,body{overflow-x:hidden}
 .mini.wide{flex:1 1 100%}.mini.wide input{width:100%}
 .sigs.one{grid-template-columns:1fr}
 @media (min-width:641px){.sigs.one .sigcol{max-width:50%}}
+
+.tag.safe{background:#fde8e4;color:#9a2b12}.tag.wait{background:#eee;color:#555}
+.acts.blk{opacity:.45}
+.vstat{display:flex;align-items:center;justify-content:center;flex:1;min-height:46px;border-radius:9px;border:1.5px dashed var(--line);font-weight:700;font-size:14px;color:var(--muted)}
+.vstat.s-ja{border:1.5px solid var(--green);color:var(--green-ink);background:var(--green-bg)}
+.vstat.s-nei{border:1.5px solid var(--warn);color:var(--warn);background:var(--warn-bg)}
+.slots{grid-column:2/-1;display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 4px}
+.pbtn.slot{padding:0 12px}.pbtn .pl{font-size:13px;font-weight:600}
+.th .thl{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);color:#fff;font-size:9.5px;font-style:normal;padding:1px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.irh{grid-column:2/-1;margin:0;padding:0}
+@media (max-width:640px){.slots{grid-column:1/-1}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -193,7 +204,7 @@ html,body{overflow-x:hidden}
     <div class="who" id="who"></div>
   </div>
   <h1>SLUTTKONTROLL (FAT) WALL-MAN</h1>
-  <div class="banner proto"><span><b>Prototyp v0.5.</b> Skjemaene bygger på malene i Kvalitetsportalen. MF = lagt til for maskinforordningen. FORELØPIG = ikke godkjent prøvemetode.</span></div>
+  <div class="banner proto"><span><b>Prototyp v0.6.</b> Skjemaene bygger på malene i Kvalitetsportalen. MF = lagt til for maskinforordningen. FORELØPIG = ikke godkjent prøvemetode.</span></div>
   <div class="banner" id="installTip" hidden><span>Legg appen på hjemskjermen: trykk <b>Del</b> og velg <b>Legg til på Hjem-skjerm</b>.</span><button class="chip" id="tipClose" type="button">OK</button></div>
   <div class="banner" id="offlineTip" hidden><span>Du er uten nett. Utfyllingen lagres på enheten og lastes opp når nettet er tilbake.</span></div>
 
